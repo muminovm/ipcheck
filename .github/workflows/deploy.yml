@@ -1,33 +1,19 @@
-name: CI/CD to Test Server
+name: Deploy to Local Test Server
 
 on:
   push:
-    branches: [ "main" ] # Пайплайн запускается при каждом пуше в ветку main
+    branches: [ "main" ]
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Copy files to test server via SSH
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "."
-          target: "/opt/ip-checker"
-
-      - name: Run Docker Compose on server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /opt/ip-checker
-            docker compose down
-            docker compose up -d --build
+      - name: Run Docker Compose
+        run: |
+          cd /home/muhammad_muminov/project/ipcheck
+          docker compose down
+          docker compose up -d --build

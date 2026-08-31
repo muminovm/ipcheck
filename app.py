@@ -8,47 +8,169 @@ HTML_TEMPLATE = """
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>IP Checker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Checker | Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #1a1a1a; color: #fff; text-align: center; padding-top: 50px; }
-        .card { background: #2a2a2a; max-width: 500px; margin: 0 auto; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        h1 { color: #00adb5; margin-bottom: 5px; }
-        .subtitle { color: #aaa; margin-top: 0; font-size: 0.9em; }
-        .info { text-align: left; margin-top: 20px; line-height: 1.8; }
-        .label { color: #888; font-weight: bold; }
-        .badge { background: #00adb5; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0b0f0d;
+            color: #e0e6e3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 650px;
+            background: #121815;
+            border: 1px solid #1f2e26;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.05);
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #1f2e26;
+        }
+        .logo {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #00ff88;
+            letter-spacing: 1px;
+        }
+        .status-badge {
+            background-color: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        .ip-card {
+            background: #17201b;
+            border: 1px solid #23352b;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 25px;
+            position: relative;
+        }
+        .ip-title {
+            font-size: 0.9em;
+            color: #8b9b92;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .ip-value {
+            font-size: 2.2em;
+            font-weight: 800;
+            color: #00ff88;
+            text-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+            font-family: monospace;
+        }
+        .public-ip-tag {
+            margin-top: 8px;
+            font-size: 0.85em;
+            color: #a0b3a8;
+        }
+        .public-ip-tag b {
+            color: #e0e6e3;
+            font-family: monospace;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-table tr {
+            border-bottom: 1px solid #1a2620;
+        }
+        .info-table tr:last-child {
+            border-bottom: none;
+        }
+        .info-table td {
+            padding: 14px 8px;
+            font-size: 0.95em;
+        }
+        .label-col {
+            color: #8b9b92;
+            width: 40%;
+            font-weight: 500;
+        }
+        .value-col {
+            color: #e0e6e3;
+            font-weight: 600;
+            text-align: right;
+        }
+        .icon {
+            margin-right: 6px;
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Ваш локальный IP: {{ local_ip }}</h1>
-        <p class="subtitle">Внешний IP (Сеть): <b>{{ public_ip }}</b> <span class="badge">Public</span></p>
-        
-        <div class="info">
-            <p><span class="label">Страна: 🌐</span> {{ geo.country }}</p>
-            <p><span class="label">Регион / Город: 🏙️</span> {{ geo.regionName }}, {{ geo.city }}</p>
-            <p><span class="label">Провайдер (ISP): 📡</span> {{ geo.isp }}</p>
-            <p><span class="label">Автономная система (AS): ⚙️</span> {{ geo.as }}</p>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🟢 IP CHECKER</div>
+            <div class="status-badge">● ONLINE</div>
         </div>
+
+        <div class="ip-card">
+            <div class="ip-title">Ваш локальный IP</div>
+            <div class="ip-value">{{ local_ip }}</div>
+            <div class="public-ip-tag">Внешний IP: <b>{{ public_ip }}</b></div>
+        </div>
+
+        <table class="info-table">
+            <tr>
+                <td class="label-col"><span class="icon">🌐</span> Страна</td>
+                <td class="value-col">{{ geo.country or 'Не определено' }}</td>
+            </tr>
+            <tr>
+                <td class="label-col"><span class="icon">🏙️</span> Регион / Город</td>
+                <td class="value-col">
+                    {% if geo.regionName or geo.city %}
+                        {{ geo.regionName }}, {{ geo.city }}
+                    {% else %}
+                        Не определено
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td class="label-col"><span class="icon">📡</span> Провайдер (ISP)</td>
+                <td class="value-col">{{ geo.isp or 'Не определено' }}</td>
+            </tr>
+            <tr>
+                <td class="label-col"><span class="icon">⚙️</span> Автономная система</td>
+                <td class="value-col">{{ geo.as or 'Не определено' }}</td>
+            </tr>
+        </table>
     </div>
 </body>
 </html>
 """
 
 def is_local_ip(ip):
-    # Проверка на приватные диапазоны IP
     return ip.startswith('192.168.') or ip.startswith('10.') or ip.startswith('172.16.') or ip == '127.0.0.1'
 
 @app.route('/')
 def index():
     user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    
     geo_data = {}
     public_ip = user_ip
 
     try:
-        # Если клиент зашел из локальной сети, делаем запрос без IP
-        # Тогда ip-api.com вернет публичный IP самого сервера
         if is_local_ip(user_ip):
             url = "http://ip-api.com/json/?fields=status,country,regionName,city,isp,as,query"
         else:
@@ -59,7 +181,7 @@ def index():
             geo_data = response.json()
             public_ip = geo_data.get('query', user_ip)
     except Exception:
-        geo_data = {"country": "Не определено", "regionName": "", "city": "", "isp": "Ошибка запроса", "as": ""}
+        geo_data = {}
 
     return render_template_string(HTML_TEMPLATE, local_ip=user_ip, public_ip=public_ip, geo=geo_data)
 

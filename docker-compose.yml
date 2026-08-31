@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  ip-checker:
+    build: .
+    container_name: my-ip-service
+    restart: always
+    ports:
+      - "8080:5000"

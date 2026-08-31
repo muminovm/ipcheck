@@ -1,19 +1,8 @@
-name: Deploy via Self-Hosted Runner
-
-on:
-  push:
-    branches: [ "main" ]
-
-jobs:
-  deploy:
-    runs-on: self-hosted
-
-    steps:
+steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Restart Docker Container
         run: |
-          cd /home/muhammad_muminov/ipcheck
           docker compose down || true
           docker compose up -d --build

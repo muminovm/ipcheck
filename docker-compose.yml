@@ -5,9 +5,6 @@ services:
     build: .
     ports:
       - "5000:5000"
-    volumes:
-      # Пробрасываем текущую папку проекта в контейнер
-      - .:/app
     environment:
       - DB_HOST=db
       - DB_NAME=ipcheck_db
@@ -15,6 +12,7 @@ services:
       - DB_PASSWORD=password
     depends_on:
       - db
+    restart: always
 
   db:
     image: postgres:15-alpine
@@ -25,5 +23,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      # Создаст папку 'pgdata' прямо внутри рабочей папки ipcheck! 📁
-      - ./pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  postgres_data:

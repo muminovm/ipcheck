@@ -1,7 +1,32 @@
+import os
+from datetime import datetime
 from flask import Flask, render_template_string, request
+from flask_sqlalchemy import SQLAlchemy
 import requests
 
 app = Flask(__name__)
+
+# Настройка подключения к PostgreSQL из переменных окружения
+DB_HOST = os.getenv('DB_HOST', 'db')
+DB_NAME = os.getenv('DB_NAME', 'ipcheck_db')
+DB_USER = os.getenv('DB_USER', 'user')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'password')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:5432/{DB_NAME}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# Модель таблицы в базе данных
+class Visit(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    ip_address = db.Column(db.String(50), nullable=False)
+    user_agent = db.Column(db.String(500), nullable=False)
+
+# Создаем таблицы в базе данных при запуске
+with app.app_context():
+    db.create_all()
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -11,11 +36,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IP Checker | Dashboard</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #0b0f0d;
@@ -43,12 +64,7 @@ HTML_TEMPLATE = """
             padding-bottom: 15px;
             border-bottom: 1px solid #1f2e26;
         }
-        .logo {
-            font-size: 1.1em;
-            font-weight: 700;
-            color: #00ff88;
-            letter-spacing: 1px;
-        }
+        .logo { font-size: 1.1em; font-weight: 700; color: #00ff88; letter-spacing: 1px; }
         .status-badge {
             background-color: rgba(0, 255, 136, 0.1);
             color: #00ff88;
@@ -65,15 +81,8 @@ HTML_TEMPLATE = """
             padding: 25px;
             text-align: center;
             margin-bottom: 25px;
-            position: relative;
         }
-        .ip-title {
-            font-size: 0.9em;
-            color: #8b9b92;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
+        .ip-title { font-size: 0.9em; color: #8b9b92; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
         .ip-value {
             font-size: 2.2em;
             font-weight: 800;
@@ -81,42 +90,15 @@ HTML_TEMPLATE = """
             text-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
             font-family: monospace;
         }
-        .public-ip-tag {
-            margin-top: 8px;
-            font-size: 0.85em;
-            color: #a0b3a8;
-        }
-        .public-ip-tag b {
-            color: #e0e6e3;
-            font-family: monospace;
-        }
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .info-table tr {
-            border-bottom: 1px solid #1a2620;
-        }
-        .info-table tr:last-child {
-            border-bottom: none;
-        }
-        .info-table td {
-            padding: 14px 8px;
-            font-size: 0.95em;
-        }
-        .label-col {
-            color: #8b9b92;
-            width: 40%;
-            font-weight: 500;
-        }
-        .value-col {
-            color: #e0e6e3;
-            font-weight: 600;
-            text-align: right;
-        }
-        .icon {
-            margin-right: 6px;
-        }
+        .public-ip-tag { margin-top: 8px; font-size: 0.85em; color: #a0b3a8; }
+        .public-ip-tag b { color: #e0e6e3; font-family: monospace; }
+        .info-table { width: 100%; border-collapse: collapse; }
+        .info-table tr { border-bottom: 1px solid #1a2620; }
+        .info-table tr:last-child { border-bottom: none; }
+        .info-table td { padding: 14px 8px; font-size: 0.95em; }
+        .label-col { color: #8b9b92; width: 40%; font-weight: 500; }
+        .value-col { color: #e0e6e3; font-weight: 600; text-align: right; }
+        .icon { margin-right: 6px; }
     </style>
 </head>
 <body>
@@ -167,6 +149,17 @@ def is_local_ip(ip):
 @app.route('/')
 def index():
     user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    user_agent = request.headers.get('User-Agent', 'Unknown')
+    
+    # Сохраняем информацию о визите в БД PostgreSQL 🐘
+    try:
+        new_visit = Visit(ip_address=user_ip, user_agent=user_agent)
+        db.session.add(new_visit)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Ошибка записи в БД: {e}")
+
     geo_data = {}
     public_ip = user_ip
 

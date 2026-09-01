@@ -1,30 +1,29 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ipcheck_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
   web:
     build: .
-    restart: unless-stopped
     ports:
       - "5000:5000"
+    volumes:
+      # Пробрасываем текущую папку проекта в контейнер
+      - .:/app
     environment:
-      DB_HOST: db
-      DB_NAME: ipcheck_db
-      DB_USER: user
-      DB_PASSWORD: password
+      - DB_HOST=db
+      - DB_NAME=ipcheck_db
+      - DB_USER=user
+      - DB_PASSWORD=password
     depends_on:
       - db
 
-volumes:
-  postgres_data:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ipcheck_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # Создаст папку 'pgdata' прямо внутри рабочей папки ipcheck! 📁
+      - ./pgdata:/var/lib/postgresql/data

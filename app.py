@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from flask import Flask, render_template_string, request
+from flask import Flask, render_template_string, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import requests
 
@@ -33,6 +33,15 @@ class Visit(db.Model):
     __table_args__ = (
         db.UniqueConstraint('ip_address', 'user_agent', name='uq_ip_useragent'),
     )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'last_seen': self.last_seen.strftime('%Y-%m-%d %H:%M:%S'),
+            'ip_address': self.ip_address,
+            'visit_count': self.visit_count,
+            'user_agent': self.user_agent,
+        }
 
 # Создаем таблицы при запуске
 with app.app_context():
@@ -163,6 +172,8 @@ INDEX_TEMPLATE = f"""
 </html>
 """
 
+# Страница истории теперь не рендерит таблицу через Jinja при загрузке —
+# она пустая по умолчанию и заполняется/обновляется через JS (fetch к /api/history)
 HISTORY_TEMPLATE = f"""
 <!DOCTYPE html>
 <html lang="ru">
@@ -209,6 +220,37 @@ HISTORY_TEMPLATE = f"""
             font-weight: 700;
             text-align: center;
         }}
+        .title-row {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }}
+        .live-dot {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8em;
+            color: #8b9b92;
+        }}
+        .live-dot span.pulse {{
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+            animation: pulse 1.5s infinite;
+        }}
+        @keyframes pulse {{
+            0% {{ opacity: 1; }}
+            50% {{ opacity: 0.3; }}
+            100% {{ opacity: 1; }}
+        }}
+        .empty-row td {{
+            text-align: center;
+            color: #8b9b92;
+            padding: 20px;
+        }}
     </style>
 </head>
 <body>
@@ -218,7 +260,10 @@ HISTORY_TEMPLATE = f"""
             <a href="/" class="nav-link">🏠 Главная</a>
         </div>
 
-        <h2 style="margin-bottom: 15px; color: #e0e6e3; font-weight: 600;">Уникальные посетители (до 20)</h2>
+        <div class="title-row">
+            <h2 style="color: #e0e6e3; font-weight: 600;">Уникальные посетители (до 20)</h2>
+            <div class="live-dot"><span class="pulse"></span> LIVE</div>
+        </div>
 
         <table class="history-table">
             <thead>
@@ -230,23 +275,48 @@ HISTORY_TEMPLATE = f"""
                     <th>User-Agent (Браузер)</th>
                 </tr>
             </thead>
-            <tbody>
-                {{% for visit in visits %}}
-                <tr>
-                    <td style="color: #555;">{{{{ visit.id }}}}</td>
-                    <td class="time-col">{{{{ visit.last_seen.strftime('%Y-%m-%d %H:%M:%S') }}}}</td>
-                    <td class="ip-badge">{{{{ visit.ip_address }}}}</td>
-                    <td><span class="count-badge">{{{{ visit.visit_count }}}}</span></td>
-                    <td class="agent-col">{{{{ visit.user_agent }}}}</td>
-                </tr>
-                {{% else %}}
-                <tr>
-                    <td colspan="5" style="text-align: center; color: #8b9b92; padding: 20px;">Записей пока нет</td>
-                </tr>
-                {{% endfor %}}
+            <tbody id="history-body">
+                <tr class="empty-row"><td colspan="5">Загрузка...</td></tr>
             </tbody>
         </table>
     </div>
+
+    <script>
+        function escapeHtml(str) {{
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }}
+
+        async function loadHistory() {{
+            try {{
+                const res = await fetch('/api/history');
+                if (!res.ok) return;
+                const visits = await res.json();
+                const tbody = document.getElementById('history-body');
+
+                if (!visits.length) {{
+                    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Записей пока нет</td></tr>';
+                    return;
+                }}
+
+                tbody.innerHTML = visits.map((v, idx) => `
+                    <tr>
+                        <td style="color:#555;">${{visits.length - idx}}</td>
+                        <td class="time-col">${{escapeHtml(v.last_seen)}}</td>
+                        <td class="ip-badge">${{escapeHtml(v.ip_address)}}</td>
+                        <td><span class="count-badge">${{v.visit_count}}</span></td>
+                        <td class="agent-col">${{escapeHtml(v.user_agent)}}</td>
+                    </tr>
+                `).join('');
+            }} catch (e) {{
+                console.error('Не удалось обновить историю визитов:', e);
+            }}
+        }}
+
+        loadHistory();
+        setInterval(loadHistory, 3000); // обновление каждые 3 секунды
+    </script>
 </body>
 </html>
 """
@@ -293,12 +363,16 @@ def index():
 
     return render_template_string(INDEX_TEMPLATE, local_ip=user_ip, public_ip=public_ip, geo=geo_data)
 
-# 📊 Маршрут для просмотра истории визитов (уникальные посетители)
+# 📊 Страница истории визитов (сама таблица заполняется через JS)
 @app.route('/history')
 def history():
-    # Получаем 20 последних уникальных посетителей, отсортированных по времени последнего визита
+    return render_template_string(HISTORY_TEMPLATE)
+
+# 🔄 JSON-эндпоинт, который опрашивает фронтенд каждые несколько секунд
+@app.route('/api/history')
+def api_history():
     recent_visits = Visit.query.order_by(Visit.last_seen.desc()).limit(20).all()
-    return render_template_string(HISTORY_TEMPLATE, visits=recent_visits)
+    return jsonify([v.to_dict() for v in recent_visits])
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

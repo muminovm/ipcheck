@@ -48,7 +48,7 @@ def history():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # Выбираем только УНИКАЛЬНЫЕ IP с их самым последним временем визита
+    # DISTINCT ON (ip_address) строго требует ORDER BY ip_address в начале!
     cur.execute('''
         SELECT DISTINCT ON (ip_address) id, timestamp, ip_address, user_agent 
         FROM visit 
@@ -63,4 +63,4 @@ def history():
     return render_template('history.html', visits=visits)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)

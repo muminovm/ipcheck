@@ -1,8 +1,18 @@
 import os
+import signal
+import sys
 from datetime import datetime
 from flask import Flask, render_template_string, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import requests
+
+# Обработчик SIGTERM — чтобы docker stop завершал процесс штатно (exit code 0),
+# а не ждал таймаут и не убивал процесс через SIGKILL (exit code 137)
+def handle_sigterm(signum, frame):
+    print("Получен SIGTERM, завершаюсь штатно...")
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, handle_sigterm)
 
 app = Flask(__name__)
 

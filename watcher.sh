@@ -3,7 +3,7 @@ set -eu
 
 send_message() {
   msg="$1"
-  curl -s -X POST "https://api.telegram.org/bot${8986607750:AAEiDZpc-b4XztkYKEJ5Qi93K55oFuRt-Bo}/sendMessage" \
+  curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
     -d chat_id="${TELEGRAM_CHAT_ID}" \
     -d text="${msg}" > /dev/null
 }

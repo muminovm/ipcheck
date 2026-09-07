@@ -19,14 +19,21 @@ for name in $WATCH_CONTAINERS; do
 done
 IFS="$OLD_IFS"
 
-# Слушаем событие "die" — оно срабатывает и при docker stop, и при падении/крэше
+# Слушаем "die" (остановка/падение) и "start" (запуск/восстановление)
 # shellcheck disable=SC2086
-docker events --filter 'event=die' $FILTERS \
-  --format '{{.Actor.Attributes.name}}|{{.Actor.Attributes.exitCode}}' |
-while IFS='|' read -r name exit_code; do
-  if [ "$exit_code" = "0" ]; then
-    send_message "🟡 Контейнер ${name} остановлен штатно (exit code 0)"
-  else
-    send_message "🔴 Контейнер ${name} упал! Exit code: ${exit_code}"
-  fi
+docker events --filter 'event=die' --filter 'event=start' $FILTERS \
+  --format '{{.Status}}|{{.Actor.Attributes.name}}|{{.Actor.Attributes.exitCode}}' |
+while IFS='|' read -r status name exit_code; do
+  case "$status" in
+    start)
+      send_message "🟢 Контейнер ${name} запущен"
+      ;;
+    die)
+      if [ "$exit_code" = "0" ]; then
+        send_message "🟡 Контейнер ${name} остановлен штатно (exit code 0)"
+      else
+        send_message "🔴 Контейнер ${name} упал! Exit code: ${exit_code}"
+      fi
+      ;;
+  esac
 done

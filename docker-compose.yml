@@ -70,6 +70,18 @@ services:
       - loki
     restart: always
 
+  watcher:
+    build:
+      context: .
+      dockerfile: Dockerfile.watcher
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - WATCH_CONTAINERS=ipcheck-web-1,ipcheck-db-1,ipcheck-nginx-1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: always
+
 volumes:
   postgres_data:
   nginx_logs:

@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   web:
     build: .
@@ -13,7 +12,6 @@ services:
     depends_on:
       - db
     restart: always
-
   db:
     image: postgres:15-alpine
     environment:
@@ -25,23 +23,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: always
-
   nginx:
     image: nginx:alpine
-    container_name: ipcheck-nginx-1
-    # Удаляем симлинки логов + запускаем Nginx
-    command: sh -c "rm -f /var/log/nginx/access.log /var/log/nginx/error.log && nginx -g 'daemon off;'"
     ports:
       - "80:80"
-      - "443:443" # 👈 Добавили порт для HTTPS
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./certs:/etc/nginx/certs:ro # 👈 Пробросили папку с сертификатами
+      - /home/muhammad_muminov/certs:/etc/nginx/certs:ro
       - nginx_logs:/var/log/nginx
     depends_on:
       - web
     restart: always
-
   loki:
     image: grafana/loki:2.9.3
     ports:
@@ -51,7 +44,6 @@ services:
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
     restart: always
-
   promtail:
     image: grafana/promtail:2.9.3
     volumes:
@@ -62,7 +54,6 @@ services:
       - loki
       - nginx
     restart: always
-
   grafana:
     image: grafana/grafana:10.4.2
     ports:
@@ -75,7 +66,6 @@ services:
     depends_on:
       - loki
     restart: always
-
   watcher:
     build:
       context: .
@@ -87,7 +77,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: always
-
 volumes:
   postgres_data:
   nginx_logs:

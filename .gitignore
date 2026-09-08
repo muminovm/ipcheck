@@ -1,3 +1,5 @@
+.env
+certs
 # Vim swap-файлы
 *.swp
 *.swo
